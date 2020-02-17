@@ -1,20 +1,20 @@
 import pandas as pd
 import csv
+import numpy as np
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 
 
 
-#reading datasets
-with open('cho.txt','r') as f:
-	cho = f.read()
+#reading datasets and putting them into numpy arrays
+cho = np.loadtxt(open('cho.txt',newline=''),delimiter='\t')
 
+#make a PCA object
+pca = PCA(n_components=2)
+#find PCA coeff.
+cho_pca = pca.fit_transform(cho[:,2:])
 
-# for st in cho.split('\n'):
+plt.scatter(x=cho_pca[:,0],y=cho_pca[:,1],c=cho[:,1])
+plt.show()
 
-
-#print(cho)
-
-
-with open('cho.txt',newline='') as f:
-	cho = csv.reader(f,delimiter='\t')
-	for row in cho:
-		print(row[1:])
