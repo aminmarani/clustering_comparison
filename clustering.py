@@ -9,6 +9,8 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 
 #reading datasets and putting them into numpy arrays
 cho = np.loadtxt(open('cho.txt',newline=''),delimiter='\t')
+cho = np.loadtxt(open('iyer.txt',newline=''),delimiter='\t')
+
 
 #make a PCA object
 pca = PCA(n_components=2)
