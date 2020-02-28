@@ -54,7 +54,7 @@ def Kmeans(data,K,eps=0.001):
 
 	#visualize changes
 	visualize(data,clusters,'Kmeans results')
-	return(clusters)
+	return(clusters,centers)
 		
 
 
@@ -68,6 +68,9 @@ def compute_external(clusters,classes):
 	#compute entropy for each class
 	entropy = 0
 	purity = 0
+	Hyc = 0 #P(Class|Cluster)
+	Hy = 0 #P(class)
+	Hc = 0 ##P(cluster)
 	for i in list(set(clusters)):
 		epr = 0
 		pur = 0
@@ -75,19 +78,34 @@ def compute_external(clusters,classes):
 		for j in list(set(classes)):
 			if(j==-1): #don't consider outliers
 				continue
-			indcls = [x for x in range(len(classes)) if classes[x]==j] #find number of classess i in data
-			indclu = [x for x in range(len(clusters)) if clusters[x]==i]#find number of cluster j in data
+			indcls = [x for x in range(len(classes)) if classes[x]==j] #find number of classess j in data
+			indclu = [x for x in range(len(clusters)) if clusters[x]==i]#find number of cluster i in data
 			t = len([x for x in indclu if x in indcls])/len(indcls) #number of items with class j in cluster i / all items of class j
 			if(t != 0):
 				epr += t*math.log2(t) #entropy for each cluster
 				s += len([x for x in indclu if x in indcls]) #number of element for each cluster
 				if len([x for x in indclu if x in indcls]) > pur:
 					pur = len([x for x in indclu if x in indcls])
+		Hyc += (-1*len(indclu)/len(clusters) ) * epr
 		entropy += (s/len(classes))*(-1*epr)
 		purity += (s/len(classes))*(pur)
-	return entropy,purity
+		Hc += (-1)* (len(indclu)/len(clusters))*math.log2(len(indclu)/len(clusters))
+	#computing Hy
+	Hy = 0
+	for j in list(set(classes)):
+		if(j!=-1):
+			indcls = [x for x in range(len(classes)) if classes[x]==j] #find number of classess i in data
+			Hy += -1 * (len(indcls)/len(classes)) * math.log2((len(indcls)/len(classes)))
 
+	NMI = (2* (Hy-Hyc) )/(Hy+Hc)
+	return entropy,purity,NMI
 
+def compute_internal(clusters,centers,data):
+	dist = 0
+	for i in range(len(data)):
+		dist += np.sqrt( sum( np.power(data[i,:]-centers[int(clusters[i]),:],2) ))
+	bic = dist + math.log(len(data)) * len(centers) * len(centers[0])
+	return bic
 
 
 
@@ -98,11 +116,14 @@ data = np.loadtxt(open(data_file,newline=''),delimiter='\t')
 visualize(data[:,2:],data[:,1],'raw data')
 
 #call K-means
-C1 = Kmeans(data[:,2:],7)
-en,pr = compute_external(C1.tolist(),data[:,1])
+C1,cen1 = Kmeans(data[:,2:],7)
+en,pr,nmi = compute_external(C1.tolist(),data[:,1])
+bic = compute_internal(C1,cen1,data[:,2:])
+
 print('Entropy of K-means: ',en)
 print('Purity of K-means: ',pr)
-
+print('Normalized Mutual Information of K-means: ',nmi)
+print('BIC of K-means: ',bic)
 
 
 #later think of ways to solve outliers
