@@ -1,7 +1,9 @@
 import pandas as pd
 import csv
 import numpy as np
+from numpy import linalg
 from sklearn.decomposition import PCA
+from sklearn.metrics import calinski_harabasz_score
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 import sys
@@ -52,10 +54,33 @@ def Kmeans(data,K,eps=0.001):
 		for i in range(0,K):
 			chnages += np.sqrt( sum( np.power(old_centers[i,:]-centers[i,:],2) ))
 
-	#visualize changes
-	visualize(data,clusters,'Kmeans results')
 	return(clusters,centers)
 		
+def spectral_clustering(data,K=5,sigma=1,weighted=True):
+	#here K is a parameter to KNN
+	W = np.ndarray(shape=(len(data),len(data)))
+	D = np.zeros(shape=(len(data),len(data)))
+	#compute distance of each item to other items
+	for i in range(len(data)):
+		t = np.asarray(compute_dist(data[i,:],data))
+		t = np.exp((-1*t)/(2*sigma**2))
+
+		#select top-K neighbours for adjancy-similarity matrix
+		t[t<(sorted(t)[-K-1])] = 0
+		W[i,:] = t
+		D[i,i] = sum(t)
+	L = D - W
+
+	v,E = linalg.eig(L)
+	kmeans_K = len(data) - np.argmax(np.sort_complex(v)[1:]-np.sort_complex(v)[0:-1])#select k for kmeans as biggest difference
+	print('chosen K for spectral clustering : ',kmeans_K)
+
+	#find top-k eigenvalues and feed those corresponding eigen-vectors to K-means
+	ind = np.argsort(v)[-K:]
+	edata = E[:,ind]
+	clusters,centers = Kmeans(edata,kmeans_K)
+	return clusters,centers
+
 
 
 def compute_dist(data,centers):
@@ -100,12 +125,58 @@ def compute_external(clusters,classes):
 	NMI = (2* (Hy-Hyc) )/(Hy+Hc)
 	return entropy,purity,NMI
 
-def compute_internal(clusters,centers,data):
+def compute_internal(clusters,centers,data,no_center=False):
+	#those clustering models like spectral that does not have centers, should be skipped 
 	dist = 0
+	bic = 0
+	if(no_center):
+		for i in range(len(data)):
+			dist += np.sqrt( sum( np.power(data[i,:]-centers[int(clusters[i]),:],2) ))
+		bic = dist + math.log(len(data)) * len(centers) * len(centers[0])
+
+	#CH index	
+	ch = calinski_harabasz_score(data,clusters)
+
+	#Davies-Boulding index
+	BD = 0
+	if(no_center):
+		for c in list(set(clusters)):
+			maxd = 0
+			c = int(c)
+			distc = sum(compute_dist(centers[c,:],data[clusters==c,:]))
+			for j in list(set(clusters)):
+				j = int(j)
+				if(c==j): #do not check the same cluster
+					continue
+				distj = sum(compute_dist(centers[j,:],data[clusters==j,:]))
+				dist_cj = sum(compute_dist(centers[c,:],[centers[j,:]]))
+				if (distc+distj)/dist_cj > maxd:
+					maxd = (distc+distj)/dist_cj
+			BD += maxd 
+		BD = BD/len(list(set(clusters)))
+
+	#silhouette index
+	SH = [0]*len(data)
 	for i in range(len(data)):
-		dist += np.sqrt( sum( np.power(data[i,:]-centers[int(clusters[i]),:],2) ))
-	bic = dist + math.log(len(data)) * len(centers) * len(centers[0])
-	return bic
+		cl = int(clusters[i])#cluster of current item
+		#if there is only one data in this cluster, S-index = 0
+		if len(np.argwhere(clusters==cl)) < 2:
+			SH[i] = 0
+			continue
+		#inter cluster distance
+		a = sum(compute_dist(data[i,:],data[clusters==cl,:]))/(len(np.argwhere(clusters==cl))-1)
+		b = []
+		for c in list(set(clusters)):
+			c = int(c)
+			#do not consider similar cluster
+			if(c == cl): continue
+			b.append(sum(compute_dist(data[i,:],data[clusters==c,:]))/(len(np.argwhere(clusters==c))))
+		b = min(b)
+		SH[i] = (b-a)/max(b,a)
+	SH = np.mean(SH)
+
+
+	return bic,ch,BD,SH
 
 
 
@@ -117,13 +188,32 @@ visualize(data[:,2:],data[:,1],'raw data')
 
 #call K-means
 C1,cen1 = Kmeans(data[:,2:],7)
+#visualize changes
+visualize(data[:,2:],C1,'Kmeans results')		
 en,pr,nmi = compute_external(C1.tolist(),data[:,1])
-bic = compute_internal(C1,cen1,data[:,2:])
+bic,ch,BD,sh = compute_internal(C1,cen1,data[:,2:])
 
 print('Entropy of K-means: ',en)
 print('Purity of K-means: ',pr)
 print('Normalized Mutual Information of K-means: ',nmi)
 print('BIC of K-means: ',bic)
+print('Calinski Harasbaz index of K-means: ',ch)
+print('Davies-Boulding index of K-means: ',BD)
+print('silhouette index of K-means: ',sh)
+
+
+#call spectral_clustering
+C2,cen2 = spectral_clustering(data[:,2:],5)
+#cen2 = np.real(cen2)
+visualize(data[:,2:],C2,'Kmeans results')		
+en,pr,nmi = compute_external(C2.tolist(),data[:,1])
+bic,ch,BD,sh = compute_internal(C2,cen2,data[:,2:])
+
+print('Entropy of spectral clustering: ',en)
+print('Purity of spectral clustering: ',pr)
+print('Normalized Mutual Information of spectral clustering: ',nmi)
+print('Calinski Harasbaz index of spectral clustering: ',ch)
+print('silhouette index of spectral clustering: ',sh)
 
 
 #later think of ways to solve outliers
