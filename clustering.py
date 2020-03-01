@@ -9,6 +9,7 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 import sys
 import time
 import math
+from sklearn.cluster import KMeans, SpectralClustering
 
 
 
@@ -105,15 +106,14 @@ def compute_external(clusters,classes):
 				continue
 			indcls = [x for x in range(len(classes)) if classes[x]==j] #find number of classess j in data
 			indclu = [x for x in range(len(clusters)) if clusters[x]==i]#find number of cluster i in data
-			t = len([x for x in indclu if x in indcls])/len(indcls) #number of items with class j in cluster i / all items of class j
+			t = len([x for x in indcls if x in indclu])/len(indclu) #number of items with class j in cluster i / all items of class j
 			if(t != 0):
 				epr += t*math.log2(t) #entropy for each cluster
 				s += len([x for x in indclu if x in indcls]) #number of element for each cluster
-				if len([x for x in indclu if x in indcls]) > pur:
-					pur = len([x for x in indclu if x in indcls])
+				pur = max(t,pur)
 		Hyc += (-1*len(indclu)/len(clusters) ) * epr
-		entropy += (s/len(classes))*(-1*epr)
-		purity += (s/len(classes))*(pur)
+		entropy += (len(indclu)/len(clusters))*(-1*epr)
+		purity += (len(indclu)/len(clusters))*(pur)
 		Hc += (-1)* (len(indclu)/len(clusters))*math.log2(len(indclu)/len(clusters))
 	#computing Hy
 	Hy = 0
@@ -129,7 +129,7 @@ def compute_internal(clusters,centers,data,no_center=False):
 	#those clustering models like spectral that does not have centers, should be skipped 
 	dist = 0
 	bic = 0
-	if(no_center):
+	if(not no_center):
 		for i in range(len(data)):
 			dist += np.sqrt( sum( np.power(data[i,:]-centers[int(clusters[i]),:],2) ))
 		bic = dist + math.log(len(data)) * len(centers) * len(centers[0])
@@ -139,7 +139,7 @@ def compute_internal(clusters,centers,data,no_center=False):
 
 	#Davies-Boulding index
 	BD = 0
-	if(no_center):
+	if(not no_center):
 		for c in list(set(clusters)):
 			maxd = 0
 			c = int(c)
@@ -182,38 +182,136 @@ def compute_internal(clusters,centers,data,no_center=False):
 
 #####main part
 data_file = sys.argv[1]
+if(len(sys.argv)==3):
+	arg = sys.argv[2]
+else:
+	arg = 'single_run'
+
 #reading datasets and putting them into numpy arrays
 data = np.loadtxt(open(data_file,newline=''),delimiter='\t')
-visualize(data[:,2:],data[:,1],'raw data')
-
-#call K-means
-C1,cen1 = Kmeans(data[:,2:],7)
-#visualize changes
-visualize(data[:,2:],C1,'Kmeans results')		
-en,pr,nmi = compute_external(C1.tolist(),data[:,1])
-bic,ch,BD,sh = compute_internal(C1,cen1,data[:,2:])
-
-print('Entropy of K-means: ',en)
-print('Purity of K-means: ',pr)
-print('Normalized Mutual Information of K-means: ',nmi)
-print('BIC of K-means: ',bic)
-print('Calinski Harasbaz index of K-means: ',ch)
-print('Davies-Boulding index of K-means: ',BD)
-print('silhouette index of K-means: ',sh)
 
 
-#call spectral_clustering
-C2,cen2 = spectral_clustering(data[:,2:],5)
-#cen2 = np.real(cen2)
-visualize(data[:,2:],C2,'Kmeans results')		
-en,pr,nmi = compute_external(C2.tolist(),data[:,1])
-bic,ch,BD,sh = compute_internal(C2,cen2,data[:,2:])
+if(arg == 'single_run'):
+	
+	visualize(data[:,2:],data[:,1],'raw data')
 
-print('Entropy of spectral clustering: ',en)
-print('Purity of spectral clustering: ',pr)
-print('Normalized Mutual Information of spectral clustering: ',nmi)
-print('Calinski Harasbaz index of spectral clustering: ',ch)
-print('silhouette index of spectral clustering: ',sh)
+	#call K-means
+	C1,cen1 = Kmeans(data[:,2:],5,eps=0.00001)
+	#visualize changes
+	visualize(data[:,2:],C1,'Kmeans results')		
+	en,pr,nmi = compute_external(C1.tolist(),data[:,1])
+	bic,ch,BD,sh = compute_internal(C1,cen1,data[:,2:])
+
+	print('##### running Kmeans ######')
+	print('Entropy of K-means: ',en)
+	print('Purity of K-means: ',pr)
+	print('Normalized Mutual Information of K-means: ',nmi)
+	print('BIC of K-means: ',bic)
+	print('Calinski Harasbaz index of K-means: ',ch)
+	print('Davies-Boulding index of K-means: ',BD)
+	print('silhouette index of K-means: ',sh)
+
+	print('##### running ScikitLearn Kmeans ######')
+	res = KMeans(n_clusters=5).fit(data[:,2:])
+	visualize(data[:,2:],C1,'Scikit Learn Kmeans results')		
+	en,pr,nmi = compute_external(res.labels_,data[:,1])
+	bic,ch,BD,sh = compute_internal(res.labels_,res.cluster_centers_,data[:,2:])
+
+	print('##### running Kmeans ######')
+	print('Entropy of K-means: ',en)
+	print('Purity of K-means: ',pr)
+	print('Normalized Mutual Information of K-means: ',nmi)
+	print('BIC of K-means: ',bic)
+	print('Calinski Harasbaz index of K-means: ',ch)
+	print('Davies-Boulding index of K-means: ',BD)
+	print('silhouette index of K-means: ',sh)
 
 
-#later think of ways to solve outliers
+
+
+	#call spectral_clustering
+	C2,cen2 = spectral_clustering(data[:,2:],5)
+	#cen2 = np.real(cen2)
+	visualize(data[:,2:],C2,'spectral_clustering results')		
+	en,pr,nmi = compute_external(C2.tolist(),data[:,1])
+	bic,ch,BD,sh = compute_internal(C2,cen2,data[:,2:],no_center = True)
+
+	print('##### running spectral_clustering ######')
+	print('Entropy of spectral clustering: ',en)
+	print('Purity of spectral clustering: ',pr)
+	print('Normalized Mutual Information of spectral clustering: ',nmi)
+	print('Calinski Harasbaz index of spectral clustering: ',ch)
+	print('silhouette index of spectral clustering: ',sh)
+
+
+
+	res = SpectralClustering(n_clusters=5).fit(data[:,2:])
+	visualize(data[:,2:],res.labels_,'ScikitLearn spectral_clustering results')		
+	en,pr,nmi = compute_external(res.labels_,data[:,1])
+	bic,ch,BD,sh = compute_internal(res.labels_,cen2,data[:,2:],no_center = True)
+
+	print('##### running Scikit Learn spectral_clustering ######')
+	print('Entropy of spectral clustering: ',en)
+	print('Purity of spectral clustering: ',pr)
+	print('Normalized Mutual Information of spectral clustering: ',nmi)
+	print('Calinski Harasbaz index of spectral clustering: ',ch)
+	print('silhouette index of spectral clustering: ',sh)
+
+
+
+
+	#internal index for actual labels
+	print('##### internal index for actual classes ######')
+	bic,ch,BD,sh = compute_internal(data[:,1],cen2,data[:,2:],no_center = True)
+	print('Calinski Harasbaz index of actual labels: ',ch)
+	print('silhouette index of actual labels: ',sh)
+
+if(arg == 'compare'):
+	metrics = np.zeros(shape=(19,4))
+
+	for K in range(2,21):
+		#call K-means
+		C1,cen1 = Kmeans(data[:,2:],K,eps=0.00001)
+		#visualize changes
+		en,pr,nmi = compute_external(C1.tolist(),data[:,1])
+		bic,ch,BD,sh = compute_internal(C1,cen1,data[:,2:])
+		metrics[K-2,0] = K; metrics[K-2,1] = en; metrics[K-2,2] = pr; metrics[K-2,3] = sh
+		
+	plt.figure('Kmeans entropy')
+	plt.xlabel('K#'); plt.ylabel('Entropy')
+	plt.plot(metrics[:,0],metrics[:,1])
+	plt.show()
+
+	plt.figure('Kmeans Purity')
+	plt.xlabel('K#'); plt.ylabel('Purity')
+	plt.plot(metrics[:,0],metrics[:,2])
+	plt.show()
+
+	plt.figure('Kmeans silhouette')
+	plt.xlabel('K#'); plt.ylabel('silhouette')
+	plt.plot(metrics[:,0],metrics[:,3])
+	plt.show()
+
+
+	for K in range(2,21):
+		#call K-means
+		C2,cen2 = spectral_clustering(data[:,2:],K)	
+		en,pr,nmi = compute_external(C2.tolist(),data[:,1])
+		bic,ch,BD,sh = compute_internal(C2,cen2,data[:,2:],no_center = True)
+		metrics[K-2,0] = K; metrics[K-2,1] = en; metrics[K-2,2] = pr; metrics[K-2,3] = sh
+		
+	plt.figure('Spectral Clustering entropy')
+	plt.xlabel('K#'); plt.ylabel('Entropy')
+	plt.plot(metrics[:,0],metrics[:,1])
+	plt.show()
+
+	plt.figure('Spectral Clustering Purity')
+	plt.xlabel('K#'); plt.ylabel('Purity')
+	plt.plot(metrics[:,0],metrics[:,2])
+	plt.show()
+
+	plt.figure('Spectral Clustering silhouette')
+	plt.xlabel('K#'); plt.ylabel('silhouette')
+	plt.plot(metrics[:,0],metrics[:,3])
+	plt.show()
+
