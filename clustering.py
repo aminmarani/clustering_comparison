@@ -13,18 +13,7 @@ from sklearn.cluster import KMeans, SpectralClustering
 
 
 
-L = np.zeros(shape=(10,10))
-L[0,:] = [5,-1,-1,0,0,-1,0,0,-1,-1]
-L[1,:] = [-1,2,-1,0,0,0,0,0,0,0]
-L[2,:] = [-1,-1,2,0,0,0,0,0,0,0]
-L[3,:] = [0,0,0,2,-1,-1,0,0,0,0]
-L[4,:] = [0,0,0,-1,2,-1,0,0,0,0]
-L[5,:] = [-1,0,0,-1,-1,5,-1,-1,0,0]
-L[6,:] = [0,0,0,0,0,-1,2,-1,0,0]
-L[7,:] = [0,0,0,0,0,-1,-1,2,0,0]
-L[8,:] = [-1,0,0,0,0,0,0,0,2,-1]
-L[9,:] = [-1,0,0,0,0,0,0,0,-1,2]
-print(L); exit()
+
 
 
 def visualize(data,clusters,title=""):
@@ -68,6 +57,8 @@ def Kmeans(data,K,eps=0.001):
 			chnages += np.sqrt( sum( np.power(old_centers[i,:]-centers[i,:],2) ))
 
 	return(clusters,centers)
+
+
 		
 def spectral_clustering(data,K=5,sigma=1,weighted=True):
 	#here K is a parameter to KNN
@@ -85,6 +76,7 @@ def spectral_clustering(data,K=5,sigma=1,weighted=True):
 	L = D - W
 
 	v,E = linalg.eig(L)
+	#print(sorted(v))
 	kmeans_K = len(data) - np.argmax(np.sort_complex(v)[1:]-np.sort_complex(v)[0:-1])#select k for kmeans as biggest difference
 	print('chosen K for spectral clustering : ',kmeans_K)
 
@@ -190,6 +182,28 @@ def compute_internal(clusters,centers,data,no_center=False):
 
 	return bic,ch,BD,SH
 
+
+# #test part
+# L = np.zeros(shape=(10,10))
+# L[0,:] = [5,-1,-1,0,0,-1,0,0,-1,-1]
+# L[1,:] = [-1,2,-1,0,0,0,0,0,0,0]
+# L[2,:] = [-1,-1,2,0,0,0,0,0,0,0]
+# L[3,:] = [0,0,0,2,-1,-1,0,0,0,0]
+# L[4,:] = [0,0,0,-1,2,-1,0,0,0,0]
+# L[5,:] = [-1,0,0,-1,-1,5,-1,-1,0,0]
+# L[6,:] = [0,0,0,0,0,-1,2,-1,0,0]
+# L[7,:] = [0,0,0,0,0,-1,-1,2,0,0]
+# L[8,:] = [-1,0,0,0,0,0,0,0,2,-1]
+# L[9,:] = [-1,0,0,0,0,0,0,0,-1,2]
+
+# K=4
+# v,Le = linalg.eig(L)
+# ind = np.argsort(v)[-K:]
+# Le = Le[:,ind]
+# CL,cen = Kmeans(Le,K=K)
+
+# CL,cen = spectral_clustering(L,K=5)
+# print(CL); exit()
 
 
 #####main part
