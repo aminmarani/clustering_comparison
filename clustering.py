@@ -183,27 +183,30 @@ def compute_internal(clusters,centers,data,no_center=False):
 	return bic,ch,BD,SH
 
 
-# #test part
-# L = np.zeros(shape=(10,10))
-# L[0,:] = [5,-1,-1,0,0,-1,0,0,-1,-1]
-# L[1,:] = [-1,2,-1,0,0,0,0,0,0,0]
-# L[2,:] = [-1,-1,2,0,0,0,0,0,0,0]
-# L[3,:] = [0,0,0,2,-1,-1,0,0,0,0]
-# L[4,:] = [0,0,0,-1,2,-1,0,0,0,0]
-# L[5,:] = [-1,0,0,-1,-1,5,-1,-1,0,0]
-# L[6,:] = [0,0,0,0,0,-1,2,-1,0,0]
-# L[7,:] = [0,0,0,0,0,-1,-1,2,0,0]
-# L[8,:] = [-1,0,0,0,0,0,0,0,2,-1]
-# L[9,:] = [-1,0,0,0,0,0,0,0,-1,2]
+#test part
+L = np.zeros(shape=(10,10))
+L[0,:] = [5,-1,-1,0,0,-1,0,0,-1,-1]
+L[1,:] = [-1,2,-1,0,0,0,0,0,0,0]
+L[2,:] = [-1,-1,2,0,0,0,0,0,0,0]
+L[3,:] = [0,0,0,2,-1,-1,0,0,0,0]
+L[4,:] = [0,0,0,-1,2,-1,0,0,0,0]
+L[5,:] = [-1,0,0,-1,-1,5,-1,-1,0,0]
+L[6,:] = [0,0,0,0,0,-1,2,-1,0,0]
+L[7,:] = [0,0,0,0,0,-1,-1,2,0,0]
+L[8,:] = [-1,0,0,0,0,0,0,0,2,-1]
+L[9,:] = [-1,0,0,0,0,0,0,0,-1,2]
 
-# K=4
-# v,Le = linalg.eig(L)
-# ind = np.argsort(v)[-K:]
-# Le = Le[:,ind]
-# CL,cen = Kmeans(Le,K=K)
+K=4
+v,Le = linalg.eig(L)
+ind = np.argsort(v)[-K:]
+ind = np.argsort(v)[1:K]
+Le = Le[:,ind]
+CL,cen = Kmeans(Le,K=K)
+CL = KMeans(n_clusters=K).fit(Le)
 
-# CL,cen = spectral_clustering(L,K=5)
-# print(CL); exit()
+#CL,cen = spectral_clustering(L,K=5)
+print(CL.labels_);exit()
+print(CL); exit()
 
 
 #####main part
